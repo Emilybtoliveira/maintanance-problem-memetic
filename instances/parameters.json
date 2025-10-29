@@ -1,0 +1,10 @@
+{
+    "irace": false,
+    "run_all": false,
+    "parallel": false,
+    "algorithm_parameters": {
+        "pop_size": 10,
+        "mutation_rate": 0.6235,
+        "crossover_rate": 0.5763
+    }
+}
