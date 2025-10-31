@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from . import Season
+from .season import Season
 
 
 class Exclusion(BaseModel):

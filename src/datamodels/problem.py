@@ -1,8 +1,8 @@
 from pydantic import BaseModel
-from exclusion import Exclusion
+from .exclusion import Exclusion
 from .resource import Resource
-from intervention import Intervention
-from time_horizon import TimeHorizon
+from .intervention import Intervention
+from .time_horizon import TimeHorizon
 
 
 class Problem(BaseModel):

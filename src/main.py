@@ -145,10 +145,6 @@ def run_all_instances_parallel(instances, algorithm_parameters) -> None:
 
 
 def main() -> None:
-    """
-    Student: Pedro Henrique Rodrigues Pereira
-    Professor: Dr. André Luiz Maravilha da Silva
-    """
     # ------------- Load the Problem ----------------
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -196,15 +192,15 @@ def main() -> None:
 
         # ------------- Make the Optimization ----------------
 
-        _, objective_value = make_optimization(
-            instance=instance,
-            problem=problem,
-            pop_size=pop_size,
-            crossover_rate=crossover_rate,
-            mutation_rate=mutation_rate,
-        )
+        # _, objective_value = make_optimization(
+        #     instance=instance,
+        #     problem=problem,
+        #     pop_size=pop_size,
+        #     crossover_rate=crossover_rate,
+        #     mutation_rate=mutation_rate,
+        # )
 
-        print(f"{instance}: {objective_value}")
+        # print(f"{instance}: {objective_value}")
 
 
 if __name__ == "__main__":

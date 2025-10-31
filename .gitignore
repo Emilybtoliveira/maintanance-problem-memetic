@@ -1,0 +1,12 @@
+poetry.lock
+logs/
+src/datamodels/__pycache__/__init__.cpython-312.pyc
+src/datamodels/__pycache__/exclusion.cpython-312.pyc
+src/datamodels/__pycache__/input_problem_loader.cpython-312.pyc
+src/datamodels/__pycache__/intervention.cpython-312.pyc
+src/datamodels/__pycache__/problem.cpython-312.pyc
+src/datamodels/__pycache__/resource.cpython-312.pyc
+src/datamodels/__pycache__/season.cpython-312.pyc
+src/datamodels/__pycache__/time_horizon.cpython-312.pyc
+utils/__pycache__/__init__.cpython-312.pyc
+utils/__pycache__/log.cpython-312.pyc
