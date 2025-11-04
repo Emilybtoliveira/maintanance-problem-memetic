@@ -12,6 +12,7 @@ from datamodels.problem import Problem
 from datamodels.input_problem_loader import InputProblemLoader
 
 from utils.log import log
+from solvers.memetic import MemeticAlgorithm
 
 TIME_LIMIT = 60 * 15  # 15 minutes
 
@@ -62,8 +63,7 @@ def make_optimization(
     start_time_execution = time.time()
     log(f"{instance}", "Optimizing the problem...")
 
-    optimization_step = OptimizationStep(
-        start_time_execution=start_time_execution,
+    optimization_step = MemeticAlgorithm(
         time_limit=TIME_LIMIT,
         problem=problem,
         file_name=instance,
@@ -72,7 +72,7 @@ def make_optimization(
         mutation_rate=mutation_rate,
     )
 
-    optimization_info = optimization_step()
+    optimization_info = optimization_step.optimize()
 
     log(f"{instance}", "\nOptimization completed.")
     log(f"{instance}", "Saving the solution to the output file...")

@@ -95,7 +95,7 @@ class Optimization:
         self.time_steps = T
         self.scenarios_array = np.array(self.problem.scenarios)
 
-    def _objective_function(self, start_times, penalty=0) -> float:
+    def objective_function(self, start_times, penalty=0) -> tuple[float, float, float]:
         """
         Optimized objective function interface
         """
@@ -110,7 +110,7 @@ class Optimization:
             penalty,
         )
 
-    def _constraints_satisfied(self, start_times) -> tuple[bool, float]:
+    def constraints_satisfied(self, start_times) -> tuple[bool, float]:
         start_times_array = np.array(start_times, dtype=np.int32)
         penalty = 0.0
 
@@ -143,7 +143,7 @@ class Optimization:
 @njit(fastmath=True)
 def _numba_objective_function(
     start_times, risk_array, deltas, T, quantile, alpha, scenarios, penalty
-):
+) -> tuple[float, float, float]:
     mean_risk = 0.0
     expected_excess = 0.0
 
