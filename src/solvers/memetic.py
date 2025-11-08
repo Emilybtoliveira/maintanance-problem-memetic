@@ -36,8 +36,8 @@ class MemeticAlgorithm:
     def _init_populaton(self, pop_size) -> np.ndarray:
         pop = [
                 [
-                    np.random.randint(1, self.problem.time_horizon.time_steps) 
-                    for _ in range(len(self.problem.interventions))
+                    np.random.randint(1, self.problem.interventions[i].tmax + 1) # Garante que o tempo de início seja válido
+                    for i in range(len(self.problem.interventions))
                 ] 
                for _ in range(pop_size)
         ]
