@@ -250,6 +250,14 @@ class InputProblemLoader:
         alpha = self._get_alpha(input_data=data)
         computation_time = self._get_computation_time(input_data=data)
 
+        print("Nº Resources:", len(resources))
+        print("Nº Interventions:", len(interventions))
+        print("Nº Exclusions:", len(exclusions))
+        print("Time Horizon:", time_horizon.time_steps)
+        print("Nº Scenarios:", len(scenarios))
+        print("Quantile:", quantile)
+        print("Alpha:", alpha)
+
         problem = Problem(
             resources=resources,
             interventions=interventions,

@@ -47,7 +47,7 @@ python python src/main.py
 Se preferir rodar um comando sem ativar o shell:
 
 ```bash
-poetry run python main.py
+poetry run python src/main.py
 ```
 
 ---

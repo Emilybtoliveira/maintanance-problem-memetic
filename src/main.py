@@ -32,7 +32,7 @@ def load_problem(current_dir, instance) -> Problem:
 
     input_path = os.path.join(current_dir, f"../input/{instance}.json")
 
-    log(instance, f"Starting at {current_time}")
+    log(instance, f"Starting at {current_time}", first_call=True)
 
     problem_loader = InputProblemLoader(input_path)
 
@@ -192,15 +192,16 @@ def main() -> None:
 
         # ------------- Make the Optimization ----------------
 
-        # _, objective_value = make_optimization(
-        #     instance=instance,
-        #     problem=problem,
-        #     pop_size=pop_size,
-        #     crossover_rate=crossover_rate,
-        #     mutation_rate=mutation_rate,
-        # )
+        solution, objective_value = MemeticAlgorithm(
+            file_name=instance,
+            problem=problem,
+            pop_size=pop_size,
+            crossover_rate=crossover_rate,
+            mutation_rate=mutation_rate,
+            time_limit=60*1
+        ).optimize()
 
-        # print(f"{instance}: {objective_value}")
+        print(f"{instance}: {solution}, {objective_value}")
 
 
 if __name__ == "__main__":

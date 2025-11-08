@@ -2,7 +2,7 @@ import time
 import numpy as np
 
 from datamodels.problem import Problem
-from optimization import Optimization
+from solvers.optimization import Optimization
 from utils.log import log
 
 POSITIVE_INFINITY = float("inf")
@@ -56,21 +56,21 @@ class MemeticAlgorithm:
         if strategy == "roulette":            
             total = self.fitness.sum()
             if total == 0:
-                idx = np.random.sample(self.pop, 2)
+                idx = np.random.choice(range(0, self.pop_size), 2)
             else:
                 probs = self.fitness / total
-                idx = np.random.choice(self.pop, size=2, replace=False, p=probs)
+                idx = np.random.choice(range(0, self.pop_size), size=2, replace=False, p=probs)
 
         elif strategy == "tournament":
             def tournament_selection(k=3):
-                contenders = np.random.sample(self.pop, k)
+                contenders = np.random.choice(range(0, self.pop_size), k)
                 return max(contenders, key=lambda ind: self.fitness[ind])
             
-            p1 = tournament_selection(self.pop)
-            p2 = tournament_selection(self.pop)
+            p1 = tournament_selection()
+            p2 = tournament_selection()
             idx = [p1, p2]
         else:
-            idx = np.random.sample(self.pop, 2)
+            idx = np.random.choice(range(0, self.pop_size), 2)
 
         return self.pop[idx[0]], self.pop[idx[1]]
     
@@ -102,27 +102,27 @@ class MemeticAlgorithm:
     
     def _evaluate_individual(self, individual) -> float:
         _, penalty = self.optimization.constraints_satisfied(individual.tolist())
-        fitness, _, _ = self.optimization.objective_function(individual, penalty)[0]
+        fitness, _, _ = self.optimization.objective_function(individual, penalty)
         return fitness
     
 
     def _local_search(self, individual) -> np.ndarray:
         return individual
 
-    def _generate_new_population(self, pop):
+    def _generate_new_population(self):
         new_pop = []
-        n_children = int(self.pop_size * self.crossover_rate)
 
-        for _ in range(n_children):
-            parent_a, parent_b = self._select_parents(pop)
-            child = self._crossover(parent_a, parent_b)            
-            child = self._local_search(child)
+        while len(new_pop) < self.pop_size:
+            parent_a, parent_b = self._select_parents(strategy="roulette")
+            if np.random.rand() > self.crossover_rate:
+                child = self._crossover(parent_a, parent_b, strategy="uniform")            
+                child = self._local_search(child)
 
-            if np.random.rand() < self.mutation_rate:
-                child = self._mutate(child)
+                if np.random.rand() < self.mutation_rate:
+                    child = self._mutate(child)
 
-            child = self._local_search(child)
-            new_pop.append(child)
+                child = self._local_search(child)
+                new_pop.append(child)
 
         return np.array(new_pop)
     
@@ -130,8 +130,8 @@ class MemeticAlgorithm:
         """
         Estratégias possveis de atualização da população:
         - generational: substitui toda a população pela nova população gerada
-        - steady_state: substitui apenas os piores indivíduos da população atual pelos melhores da nova população
         - elitism: mantém o melhor indivíduo da população atual e substitui o restante pela nova população gerada
+        - steady_state: substitui apenas os piores indivíduos da população atual pelos melhores da nova população
         """
         if strategy == "generational":
             return new_pop
@@ -150,7 +150,7 @@ class MemeticAlgorithm:
             best_indices = np.argsort(fitness_combined)[: self.pop_size]
             return combined[best_indices]
 
-    def restart_population(self, pop, strategy="random"):
+    def restart_population(self, pop, strategy="elitist"):
         """
         Reinicia a população para evitar convergência prematura. Estratégas possíveis:
         - random: gera uma nova população aleatória
@@ -166,7 +166,7 @@ class MemeticAlgorithm:
             best_idxs = np.argsort(self.fitness)[: n_to_keep]
             best_individuals = pop[best_idxs]
             new_pop = self._init_populaton(self.pop_size - n_to_keep)
-            return new_pop + best_individuals
+            return np.vstack((new_pop, best_individuals))
         
 
     def _has_converged(self) -> bool:
@@ -176,8 +176,9 @@ class MemeticAlgorithm:
     # Loop principal de otimização
     # ==========================
 
-    def optimize(self) -> float:
+    def optimize(self) -> tuple[np.ndarray, float]:
         start_time = time.time()
+        # np.random.seed(start_time)
 
         self.pop = self._init_populaton(self.pop_size)
         self.fitness = np.array(
@@ -186,29 +187,36 @@ class MemeticAlgorithm:
 
         elapsed_time = time.time() - start_time
         while elapsed_time < self.time_limit:
-            log(f"{self.file_name}", f"GA - Elapsed time: {elapsed_time:.2f} seconds.")                
+            log(f"{self.file_name}", f"Elapsed time: {elapsed_time:.2f} seconds.")                
             
-            new_pop = self._generate_new_population(self.pop)
-            self.pop = self.update_populaton(self.pop, new_pop, strategy="generational")
+            new_pop = self._generate_new_population()
+            self.pop = self.update_populaton(self.pop, new_pop, strategy="steady_state")
             self.fitness = np.array(
                 [self._evaluate_individual(ind) for ind in self.pop]
             )
 
             if self._has_converged():
-                log(self.file_name, "GA - Convergência atingida. Reiniciando população.")
-                self.pop = self.restart_population(self.pop, strategy="random")
+                log(self.file_name, "Convergência atingida. Reiniciando população.")
+                self.pop = self.restart_population(self.pop, strategy="elitist")
                 self.fitness = np.array(
                     [self._evaluate_individual(ind) for ind in self.pop]
-                )
-            
+                )            
+        
+            best_idx = np.argmin(self.fitness)
+            best_individual = self.pop[best_idx]
+            best_fitness = self.fitness[best_idx]
+            n_viable_solutions = np.count_nonzero(self.optimization.constraints_satisfied(ind.tolist())[0] for ind in self.pop)
+
+            log(self.file_name, f"Melhor indivíduo: {best_individual}")
+            log(self.file_name, f"Melhor fitness: {best_fitness:.6f}")
+            log(self.file_name, f"Contagem de soluções viáves: {n_viable_solutions}")
+
+            print(best_fitness)
+            print(n_viable_solutions)
+
+
             elapsed_time = time.time() - start_time
 
-        
-        best_idx = np.argmin(self.fitness)
-        best_individual = self.pop[best_idx]
-        best_fitness = self.fitness[best_idx]
-
-        log(self.file_name, f"GA - Melhor indivíduo: {best_individual}")
-        log(self.file_name, f"GA - Melhor fitness: {best_fitness:.6f}")
+        print(self.optimization.constraints_satisfied(best_individual.tolist()))
 
         return best_individual, best_fitness
