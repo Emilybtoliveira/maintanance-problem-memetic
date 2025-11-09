@@ -14,7 +14,8 @@ from datamodels.input_problem_loader import InputProblemLoader
 from utils.log import log
 from solvers.memetic import MemeticAlgorithm
 
-TIME_LIMIT = 60 * 15  # 15 minutes
+
+TIME_LIMIT = 60 * 2  # 15 minutes
 
 
 def load_problem(current_dir, instance) -> Problem:
@@ -63,16 +64,14 @@ def make_optimization(
     start_time_execution = time.time()
     log(f"{instance}", "Optimizing the problem...")
 
-    optimization_step = MemeticAlgorithm(
-        time_limit=TIME_LIMIT,
-        problem=problem,
-        file_name=instance,
-        pop_size=pop_size,
-        crossover_rate=crossover_rate,
-        mutation_rate=mutation_rate,
-    )
-
-    optimization_info = optimization_step.optimize()
+    solution, objective_value = MemeticAlgorithm(
+            file_name=instance,
+            problem=problem,
+            pop_size=pop_size,
+            crossover_rate=crossover_rate,
+            mutation_rate=mutation_rate,
+            time_limit=TIME_LIMIT
+        ).optimize()
 
     log(f"{instance}", "\nOptimization completed.")
     log(f"{instance}", "Saving the solution to the output file...")
@@ -81,11 +80,11 @@ def make_optimization(
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"{instance}.txt"
     with open(output_file, "w") as f:
-        f.write(f"{optimization_info['solution']}")
+        f.write(f"{solution}")
 
     log(f"{instance}", "Done!\n")
 
-    return optimization_info["solution"], optimization_info["objective_value"]
+    return solution, objective_value
 
 
 def run_all_instances(instances, algorithm_parameters) -> None:
@@ -183,7 +182,7 @@ def main() -> None:
             crossover_rate = float(sys.argv[3])
             mutation_rate = float(sys.argv[4])
         else:
-            instance = "A_09"  # The default instance because it is the smallest and runs faster
+            instance = "A_03"  # The default instance because it is the smallest and runs faster
             pop_size = algorithm_parameters["pop_size"]
             crossover_rate = algorithm_parameters["crossover_rate"]
             mutation_rate = algorithm_parameters["mutation_rate"]
@@ -198,7 +197,7 @@ def main() -> None:
             pop_size=pop_size,
             crossover_rate=crossover_rate,
             mutation_rate=mutation_rate,
-            time_limit=60*1
+            time_limit=TIME_LIMIT
         ).optimize()
 
         print(f"{instance}: {solution}, {objective_value}")
