@@ -15,7 +15,7 @@ from utils.log import log
 from solvers.memetic import MemeticAlgorithm
 
 
-TIME_LIMIT = 60 * 2  # 15 minutes
+TIME_LIMIT = 60 * 10  # 15 minutes
 
 
 def load_problem(current_dir, instance) -> Problem:
@@ -65,13 +65,13 @@ def make_optimization(
     log(f"{instance}", "Optimizing the problem...")
 
     solution, objective_value = MemeticAlgorithm(
-            file_name=instance,
-            problem=problem,
-            pop_size=pop_size,
-            crossover_rate=crossover_rate,
-            mutation_rate=mutation_rate,
-            time_limit=TIME_LIMIT
-        ).optimize()
+        file_name=instance,
+        problem=problem,
+        pop_size=pop_size,
+        crossover_rate=crossover_rate,
+        mutation_rate=mutation_rate,
+        time_limit=TIME_LIMIT,
+    ).optimize()
 
     log(f"{instance}", "\nOptimization completed.")
     log(f"{instance}", "Saving the solution to the output file...")
@@ -197,7 +197,7 @@ def main() -> None:
             pop_size=pop_size,
             crossover_rate=crossover_rate,
             mutation_rate=mutation_rate,
-            time_limit=TIME_LIMIT
+            time_limit=TIME_LIMIT,
         ).optimize()
 
         print(f"{instance}: {solution}, {objective_value}")

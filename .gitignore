@@ -1,5 +1,6 @@
 poetry.lock
 logs/
+__pycache__/
 src/datamodels/__pycache__/__init__.cpython-312.pyc
 src/datamodels/__pycache__/exclusion.cpython-312.pyc
 src/datamodels/__pycache__/input_problem_loader.cpython-312.pyc
