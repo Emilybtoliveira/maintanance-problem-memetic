@@ -17,7 +17,7 @@ class MemeticAlgorithm:
         crossover_rate: float = 0.8,
         mutation_rate: float = 0.1,
         time_limit: int = 60 * 5,  # seconds
-        tol: int = 1e-6,
+        tol: int = 1e-6
     ):        
         self.file_name = file_name
         self.problem = problem
@@ -29,61 +29,57 @@ class MemeticAlgorithm:
         self.tol = tol
         self.optimization = Optimization(problem)
         self.pop = None
-
     # ==========================
     # Memetic Algorithm Functions
     # ==========================
 
-    def _init_populaton(self, pop_size) -> np.ndarray:
-        pop = [
-                [
-                    np.random.randint(1, self.problem.interventions[i].tmax + 1) # Garante que o tempo de início seja válido
-                    for i in range(len(self.problem.interventions))
-                ] 
-               for _ in range(pop_size)
-        ]
+    def _init_population(self, pop_size) -> np.ndarray:
+        pop = []
+
+        for _ in range(pop_size):
+            individual = []
+            for i in range(len(self.problem.interventions)):
+                intervention = self.problem.interventions[i]
+                max_valid_start = intervention.tmax
+
+                for t in range(intervention.tmax, 0, -1):
+                    if (
+                        t + intervention.delta[t - 1]
+                        <= self.problem.time_horizon.time_steps
+                    ):
+                        max_valid_start = t
+                        break
+
+                start_time = np.random.randint(1, max(2, max_valid_start + 1))
+                individual.append(start_time)
+
+            pop.append(individual)
+
         return np.array(pop)
     
-    def _repair_population(self, pop, resource_window=5, max_time=10) -> np.ndarray:
-        # print("Repairing population...")
-
-        # intervention = np.count_nonzero([self.optimization.intervention_constraint_satisfied(individual)[0] for individual in pop])
-        # exclusion = np.count_nonzero([self.optimization.exclusion_constraint_satisfied(individual)[0] for individual in pop])
-        # resource = np.count_nonzero([self.optimization.resources_constraint_satisfied(individual)[0] for individual in pop])        
-
-        # print(f"Intervention Constraint: {intervention}")
-        # print(f"Exclusion Constraint: {exclusion}")
-        # print(f"Resource Constraint: {resource}")
-
-        start_time = time.time()
-
+    def _repair_population(self, pop) -> np.ndarray:
+        """
+        Função de reparo da população como um todo. Não utilizada, porque se mostrou
+        muito custosa.
+        """
         for index, individual in enumerate(pop):
-            if time.time() - start_time > max_time:
-                break
-            # print(self.optimization.intervention_constraint_satisfied(individual))
-            # print(self.optimization.exclusion_constraint_satisfied(individual))
-            # print(self.optimization.resources_constraint_satisfied(individual))
-
             # Verifica se há violações no tempo de inicio das intervenções
-            if not self.optimization.intervention_constraint_satisfied(individual)[0]:
-                for i, start_time in enumerate(individual):
-                    if (start_time > self.problem.interventions[i].tmax or 
-                        start_time + self.problem.interventions[i].delta[start_time - 1] > self.problem.time_horizon.time_steps):
+            for j in range(len(individual)):
+                intervention = self.problem.interventions[j]
 
-                        max_allowable_start = self.problem.interventions[i].tmax
-                        for i in range(self.problem.interventions[i].tmax, -1, -1):
-                            if i + self.problem.interventions[i].delta[i] <= self.problem.time_horizon.time_steps:
-                                max_allowable_start = i
-                                break
-                        
-                        individual[i] = np.random.randint(1, max_allowable_start)
+                if individual[j] < 1 or individual[j] > intervention.tmax:
+                    individual[j] = np.random.randint(1, intervention.tmax + 1)
+
+                delta = intervention.delta[individual[j] - 1]
+                if individual[j] + delta > self.problem.time_horizon.time_steps:
+                    max_start = max(1, self.problem.time_horizon.time_steps - delta)
+                    individual[j] = min(max_start, intervention.tmax)
                 
+                pop[index] = individual                
 
             # Verifica se há conflitos de exclusão
             if not self.optimization.exclusion_constraint_satisfied(individual)[0]:
                 for idx in range(len(self.problem.exclusions)):
-                    if time.time() - start_time > max_time:
-                        break
                     excl_interventions_names = self.problem.exclusions[idx].interventions
                     excl_interventions = [
                         next(
@@ -119,62 +115,36 @@ class MemeticAlgorithm:
                                     individual[excl_interventions[i]] = start_times[j] - deltas[i]
                                     start_times[i] = individual[excl_interventions[i]]
                                     end_times[i] = start_times[i] + deltas[i] - 1
-                                # else:      
-                                #     print("Não foi possível reparar conflito de exclusão entre intervenções", excl_interventions[i], "e", excl_interventions[j])
-                
+    
+                                pop[index] = individual
+
 
             # Verifica se há conflitos de recursos
             if not self.optimization.resources_constraint_satisfied(individual)[0]:
                 _, _, underused, overused = self.optimization.resources_constraint_satisfied(individual)          
-                improved = False
                 for t in overused.keys():
-                    if time.time() - start_time > max_time:
-                        break
                     for intervention in overused[t]:
                         # tenta deslocar a intervenção
-                        new = self._try_shift(individual, intervention, window=resource_window, overuse=True)
+                        new = self._try_shift(individual, intervention, overuse=True)
                         if new is not None:
                             individual = new
                             pop[index] = individual
-                            improved = True
-                    # if improved:
-                        # print("Successfully repaired overused resource conflict.")
                 
                 for t in underused.keys():
-                    if time.time() - start_time > max_time:
-                        break
                     for intervention in underused[t]:
                         # tenta deslocar a intervenção
-                        new = self._try_shift(individual, intervention, window=resource_window, overuse=False)
+                        new = self._try_shift(individual, intervention, overuse=False)
                         if new is not None:
                             individual = new
                             pop[index] = individual
-                            improved = True
-                        # if improved:
-                            # print("Successfully repaired underused resource conflict.")                    
-
-                # if not improved:
-                #     print("Não foi possível reparar conflito de recursos.")
-                
-            # print(self.optimization.resources_constraint_satisfied(individual))
-
-            # print("-----")
-
-        # intervention = np.count_nonzero([self.optimization.intervention_constraint_satisfied(individual)[0] for individual in pop])
-        # exclusion = np.count_nonzero([self.optimization.exclusion_constraint_satisfied(individual)[0] for individual in pop])
-        # resource = np.count_nonzero([self.optimization.resources_constraint_satisfied(individual)[0] for individual in pop])        
-
-        # print(f"Intervention Constraint: {intervention}")
-        # print(f"Exclusion Constraint: {exclusion}")
-        # print(f"Resource Constraint: {resource}")
         return pop
-
 
     def _feasible_start(self, individual, i, new_start) -> bool:
         """
+        Função auxiliar de _repair_population.
         Testa se ao colocar a intervenção i em new_start as restrições básicas
         (intervention + exclusion) permanecem válidas. Não checa recursos aqui.
-        Usa os validadores da Optimization para segurança.
+        Usa os validadores da Optimization para segurança. 
         """
         ind_copy = deepcopy(individual)
         ind_copy[i] = new_start
@@ -184,6 +154,7 @@ class MemeticAlgorithm:
 
     def _try_shift(self, individual, i, window=5, overuse=True) -> np.ndarray:
         """
+        Função auxiliar de _repair_population.
         Tenta mover a intervenção i para aliviar sobrecarga/subcarga de recursos.
         Busca deslocamentos em [-window .. +window]. Retorna novo start
         se encontrou um deslocamento que melhora (ou mantém) e é factível.
@@ -221,218 +192,293 @@ class MemeticAlgorithm:
         return None
 
 
-    def _select_parents(self, strategy="tournament"):
-        """
-        Seleciona dois pais. Estratégias possíveis:
-        - random: seleciona dois pais aleatoriamente
-        - tournament: seleciona dois pais através de torneio    
-        - roulette: seleciona dois pais através de roleta
-        """
-        if strategy == "roulette":            
-            total = self.fitness.sum()
-            if total == 0:
-                idx = np.random.choice(range(0, self.pop_size), 2)
-            else:
-                probs = self.fitness / total
-                idx = np.random.choice(range(0, self.pop_size), size=2, replace=False, p=probs)
+    def _repair_individual(self, individual) -> np.ndarray:
+        for i in range(len(individual)):
+            intervention = self.problem.interventions[i]
 
-        elif strategy == "tournament":
-            def tournament_selection(k=3):
-                contenders = np.random.choice(range(0, self.pop_size), k)
-                return max(contenders, key=lambda ind: self.fitness[ind])
-            
-            p1 = tournament_selection()
-            p2 = tournament_selection()
-            idx = [p1, p2]
-        else:
-            idx = np.random.choice(range(0, self.pop_size), 2)
+            if individual[i] < 1 or individual[i] > intervention.tmax:
+                individual[i] = np.random.randint(1, intervention.tmax + 1)
 
-        return self.pop[idx[0]], self.pop[idx[1]]
-    
-    def _crossover(self, parent_a, parent_b, strategy="one_point"):
+            delta = intervention.delta[individual[i] - 1]
+            if individual[i] + delta > self.problem.time_horizon.time_steps:
+                max_start = max(1, self.problem.time_horizon.time_steps - delta)
+                individual[i] = min(max_start, intervention.tmax)
+
+        return individual
+
+    def _select_parents(self):
         """
-        Realiza o crossover entre dois pais para gerar um filho. Estratégias possíveis:
-        - one_point: crossover de um ponto
-        - two_point: crossover de dois pontos
-        - uniform: crossover uniforme
+        Seleção de pais via torneio.
+        """
+        def tournament_selection(k=3):
+            contenders = np.random.choice(range(self.pop_size), k, replace=False)
+            return min(contenders, key=lambda ind: self.fitness[ind])
+
+        p1 = tournament_selection()
+        p2 = tournament_selection()
+        return self.pop[p1], self.pop[p2]
+
+    def _crossover(self, parent_a, parent_b):
+        """
+        Crossover uniforme.
         """
         n = len(parent_a)
-        if strategy == "two_point":
-            c1, c2 = sorted(np.random.choice(range(1, n), 2, replace=False))
-            child = np.concatenate((parent_a[:c1], parent_b[c1:c2], parent_a[c2:]))
-        elif strategy == "uniform":
-            mask = np.random.rand(n) < 0.5
-            child = np.where(mask, parent_a, parent_b)
-        else: 
-            c = np.random.randint(1, n)
-            child = np.concatenate((parent_a[:c], parent_b[c:]), axis=0)
+        mask = np.random.rand(n) < 0.5
+        child = np.where(mask, parent_a, parent_b)
         return child
 
     def _mutate(self, individual):
-        mutation_idx = np.random.randint(0, len(individual))
-        individual[mutation_idx] = np.random.randint(
-            1, self.problem.interventions[mutation_idx].tmax + 1 # Mutação garante que o tempo de início seja válido
-        )
+        """
+        Mutação com três estratégias: mutação de um gene, múltiplos genes ou
+        deslocamento de genes.
+        """
+        strategy = np.random.choice(["single", "multiple", "shift"])
+
+        if strategy == "single":
+            idx = np.random.randint(0, len(individual))
+            individual[idx] = np.random.randint(
+                1, self.problem.interventions[idx].tmax + 1
+            )
+
+        elif strategy == "multiple":
+            n_mutations = np.random.randint(2, min(4, len(individual) + 1))
+            indices = np.random.choice(len(individual), n_mutations, replace=False)
+            for idx in indices:
+                individual[idx] = np.random.randint(
+                    1, self.problem.interventions[idx].tmax + 1
+                )
+
+        else:
+            offset = np.random.randint(-3, 4)
+            for i in range(len(individual)):
+                new_val = individual[i] + offset
+                new_val = np.clip(new_val, 1, self.problem.interventions[i].tmax)
+                individual[i] = new_val
+
         return individual
-    
+
     def _evaluate_individual(self, individual) -> float:
         _, penalty = self.optimization.constraints_satisfied(individual)
         fitness, _, _ = self.optimization.objective_function(individual, penalty)
         return fitness
-    
 
-    def _local_search(self, individual, max_time = 10, window=10, first_improvement = True) -> np.ndarray:
+    def _shift_move(self, individual, intervention_idx, new_time):
         """
-        Busca local que tenta fazer trocar nos tempos de início das intervenções para melhorar o fitness.
+        Função auxiliar de _local_search.
+        Gera um movimento de deslocamento para a intervenção dada.
+        """
+        candidate = individual.copy()
+        candidate[intervention_idx] = new_time
+        return candidate
+
+    def _swap_move(self, individual, i1, i2):
+        """
+        Função auxiliar de _local_search.
+        Gera um movimento de troca entre as intervenções i1 e i2.
+        """
+        candidate = individual.copy()
+        candidate[i1], candidate[i2] = candidate[i2], candidate[i1]
+        return candidate
+
+    def _is_feasible_move(self, candidate):
+        """
+        Função auxiliar de _local_search.
+        Verifica se o movimento gerado é factível.
+        """
+        interv_ok = self.optimization.intervention_constraint_satisfied(candidate)[0]
+        excl_ok = self.optimization.exclusion_constraint_satisfied(candidate)[0]
+        return interv_ok and excl_ok
+
+    def _local_search(
+        self, individual, max_time=3, max_non_improving=100
+    ) -> np.ndarray:
+        """
+        Busca local híbrida com movimentos de deslocamento e troca.
+        Alterna entre os dois tipos de movimento quando um número máximo
+        de movimentos sem melhoria é atingido.
         """
         best = individual.copy()
         best_fitness = self._evaluate_individual(best)
+        current = best.copy()
+        current_fitness = best_fitness
 
-        improved = True
         start = time.time()
-        while improved and (time.time() - start < max_time):
+        non_improving_moves = 0
+        iteration = 0
+        use_shift = True
+
+        while time.time() - start < max_time:
+            iteration += 1
             improved = False
-            for i in range(len(individual)):
-                if time.time() - start >= max_time:
-                    break
-                current_start = best[i]
-                best_local_fitness = best_fitness
 
-                for delta in range(-window, window):
-                    if delta == 0:
-                        continue
-                    new_start = current_start + delta
+            if use_shift:
+                candidates = []
+                for i in range(len(current)):
+                    current_start = current[i]
+                    for delta in [-3, -2, -1, 1, 2, 3]:
+                        new_start = current_start + delta
+                        if 1 <= new_start <= self.problem.interventions[i].tmax:
+                            candidate = self._shift_move(current, i, new_start)
+                            if self._is_feasible_move(candidate):
+                                candidates.append(candidate)
 
-                    if new_start < 1 or new_start > self.problem.interventions[i].tmax:
-                        continue
+                if candidates:
+                    candidate = candidates[np.random.randint(len(candidates))]
+                    candidate_fitness = self._evaluate_individual(candidate)
 
-                    candidate = deepcopy(best)
-                    candidate[i] = new_start
-                    new_fitness = self._evaluate_individual(candidate)
+                    if candidate_fitness < current_fitness or (iteration % 1000 == 0):
+                        current = candidate
+                        current_fitness = candidate_fitness
 
-                    if new_fitness < best_local_fitness:
-                        best = candidate
-                        best_fitness = new_fitness
-                        improved = True
-                        if first_improvement:
-                            break
-            
-        # print("Local search completed. Best fitness:", best_fitness)
+                        if candidate_fitness < best_fitness:
+                            best = candidate
+                            best_fitness = candidate_fitness
+                            improved = True
+                            non_improving_moves = 0
+            else:
+                candidates = []
+                indices = list(range(len(current)))
+                np.random.shuffle(indices)
+
+                for idx in range(min(10, len(indices))):
+                    i1 = indices[idx]
+                    i2 = indices[(idx + 1) % len(indices)]
+                    candidate = self._swap_move(current, i1, i2)
+                    if self._is_feasible_move(candidate):
+                        candidates.append(candidate)
+
+                if candidates:
+                    candidate = candidates[np.random.randint(len(candidates))]
+                    candidate_fitness = self._evaluate_individual(candidate)
+
+                    if candidate_fitness < current_fitness or (iteration % 1000 == 0):
+                        current = candidate
+                        current_fitness = candidate_fitness
+
+                        if candidate_fitness < best_fitness:
+                            best = candidate
+                            best_fitness = candidate_fitness
+                            improved = True
+                            non_improving_moves = 0
+
+            if not improved:
+                non_improving_moves += 1
+                if non_improving_moves >= max_non_improving:
+                    use_shift = not use_shift
+                    non_improving_moves = 0
 
         return best
 
-    def _generate_new_population(self, repair_children=False) -> np.ndarray:
+    def _generate_new_population(self) -> np.ndarray:
         new_pop = []
 
         while len(new_pop) < self.pop_size:
-            parent_a, parent_b = self._select_parents(strategy="roulette")
-            if np.random.rand() > self.crossover_rate:
-                child = self._crossover(parent_a, parent_b, strategy="uniform") 
-                
-                child = self._local_search(child)
+            parent_a, parent_b = self._select_parents()
 
-                if np.random.rand() < self.mutation_rate:
-                    child = self._mutate(child)
+            if np.random.rand() < self.crossover_rate:
+                child = self._crossover(parent_a, parent_b)
+            else:
+                child = parent_a.copy() if np.random.rand() < 0.5 else parent_b.copy()
 
-                # child = self._local_search(child)
-                new_pop.append(child)
-        
-        if repair_children:     
-            new_pop = self._repair_population(np.array(new_pop))  
+            if np.random.rand() < self.mutation_rate:
+                child = self._mutate(child)
+
+            child = self._repair_individual(child)
+            new_pop.append(child)
+
+        new_pop = np.array(new_pop)
+        fitness_new = np.array([self._evaluate_individual(ind) for ind in new_pop])
+        n_to_improve = max(1, int(0.2 * self.pop_size))
+        best_indices = np.argsort(fitness_new)[:n_to_improve]
+
+        for idx in best_indices:
+            new_pop[idx] = self._local_search(new_pop[idx])
 
         return new_pop
-    
-    def update_populaton(self, pop, new_pop, strategy="generational"):
+
+    def _update_population(self, pop, new_pop):
         """
-        Estratégias possveis de atualização da população:
-        - generational: substitui toda a população pela nova população gerada
-        - elitism: mantém o melhor indivíduo da população atual e substitui o restante pela nova população gerada
-        - steady_state: substitui apenas os piores indivíduos da população atual pelos melhores da nova população
+        Atualização da população via elitismo.
         """
-        if strategy == "generational":
-            return new_pop
+        best_idx = np.argmin(self.fitness)
+        best_individual = pop[best_idx]
+        new_pop[0] = best_individual
+        return new_pop
 
-        elif strategy == "elitism":
-            best_idx = np.argmin(self.fitness)
-            best_individual = pop[best_idx]
-            new_pop[0] = best_individual
-            return new_pop
-
-        elif strategy == "steady_state":
-            combined = np.vstack((pop, new_pop))
-            fitness_combined = np.array(
-                [self._evaluate_individual(ind) for ind in combined]
-            )
-            best_indices = np.argsort(fitness_combined)[: self.pop_size]
-            return combined[best_indices]
-
-    def restart_population(self, pop, strategy="elitist"):
+    def _restart_population(self, pop):
         """
-        Reinicia a população para evitar convergência prematura. Estratégas possíveis:
-        - random: gera uma nova população aleatória
-        - elitista: mantém os melhores indivíduos e reinicia o restante
-        """
-        if strategy == "random":
-            return self._init_populaton(self.pop_size)
+        Reinício da população mantendo os melhores indivíduos."""
+        percentage_to_keep = 0.2
+        n_to_keep = int(self.pop_size * percentage_to_keep)
 
-        elif strategy == "elitist":
-            percentage_to_keep = 0.2
-            n_to_keep = int(self.pop_size * percentage_to_keep)
-
-            best_idxs = np.argsort(self.fitness)[: n_to_keep]
-            best_individuals = pop[best_idxs]
-            new_pop = self._init_populaton(self.pop_size - n_to_keep)
-            return np.vstack((new_pop, best_individuals))
-        
+        best_idxs = np.argsort(self.fitness)[:n_to_keep]
+        best_individuals = pop[best_idxs]
+        new_pop = self._init_population(self.pop_size - n_to_keep)
+        return np.vstack((new_pop, best_individuals))
 
     def _has_converged(self) -> bool:
+        """
+        Verifica se a população convergiu com base na tolerância definida.
+        """
         return np.all(np.abs(self.fitness - self.fitness.mean()) < self.tol)
-
-    # ==========================
-    # Loop principal de otimização
-    # ==========================
 
     def optimize(self) -> tuple[np.ndarray, float]:
         start_time = time.time()
+        generation = 0
 
-        self.pop = self._init_populaton(self.pop_size)
-        self.pop = self._repair_population(self.pop)
+        self.pop = self._init_population(self.pop_size)
+        for i in range(self.pop_size):
+            self.pop[i] = self._repair_individual(self.pop[i])
 
-        self.fitness = np.array(
-            [self._evaluate_individual(ind) for ind in self.pop]
-        )
+        self.fitness = np.array([self._evaluate_individual(ind) for ind in self.pop])
 
-        elapsed_time = time.time() - start_time
-        while elapsed_time < self.time_limit:
-            log(f"{self.file_name}", f"Elapsed time: {elapsed_time:.2f} seconds.")                
-            
-            new_pop = self._generate_new_population(repair_children=False)
-            self.pop = self.update_populaton(self.pop, new_pop, strategy="steady_state")
+        best_fitness_history = []
+        no_improvement_count = 0
+
+        while time.time() - start_time < self.time_limit:
+            generation += 1
+            elapsed = time.time() - start_time
+
+            log(f"{self.file_name}", f"Gen {generation} | Time: {elapsed:.1f}s")
+
+            new_pop = self._generate_new_population()
+            self.pop = self._update_population(self.pop, new_pop)
             self.fitness = np.array(
                 [self._evaluate_individual(ind) for ind in self.pop]
             )
 
-            if self._has_converged():
-                log(self.file_name, "Convergência atingida. Reiniciando população.")
-                self.pop = self.restart_population(self.pop, strategy="elitist")
+            best_idx = np.argmin(self.fitness)
+            best_fitness = self.fitness[best_idx]
+            best_fitness_history.append(best_fitness)
+
+            if len(best_fitness_history) > 20:
+                recent_improvement = best_fitness_history[-20] - best_fitness
+                if recent_improvement < 1e-3:
+                    no_improvement_count += 1
+                else:
+                    no_improvement_count = 0
+
+            if no_improvement_count > 5 or (generation > 10 and self._has_converged()):
+                log(self.file_name, "Reiniciando população por estagnação")
+                self.pop = self._restart_population(self.pop)
                 self.fitness = np.array(
                     [self._evaluate_individual(ind) for ind in self.pop]
-                )            
-        
-            best_idx = np.argmin(self.fitness)
-            best_individual = self.pop[best_idx]
-            best_fitness = self.fitness[best_idx]
-            n_viable_solutions = np.count_nonzero([self.optimization.constraints_satisfied(ind)[0] for ind in self.pop])
+                )
+                no_improvement_count = 0
 
-            log(self.file_name, f"Melhor indivíduo: {best_individual}")
-            log(self.file_name, f"Melhor fitness: {best_fitness:.6f}")
-            log(self.file_name, f"Contagem de soluções viáves: {n_viable_solutions}")
+            n_viable = np.sum(
+                [self.optimization.constraints_satisfied(ind)[0] for ind in self.pop]
+            )
+            log(
+                self.file_name,
+                f"Best: {best_fitness} | Viable: {n_viable}/{self.pop_size}",
+            )
 
-            print(best_fitness)
-            print(n_viable_solutions)
+            print(f"Gen {generation}: {best_fitness} | Viable: {n_viable}")
 
-            elapsed_time = time.time() - start_time
+        best_idx = np.argmin(self.fitness)
+        best_individual = self.pop[best_idx]
 
         print(self.optimization.constraints_satisfied(best_individual))
 
-        return best_individual, best_fitness
+        return best_individual, self.fitness[best_idx]
