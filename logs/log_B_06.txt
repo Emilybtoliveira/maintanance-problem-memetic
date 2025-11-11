@@ -1,0 +1,32 @@
+Starting at 2025-11-11 13:22:18
+Loading the problem...
+Problem loaded successfully!
+Elapsed time: 3.07 seconds
+Optimizing the problem...
+Gurobi solution: 3803.6861263800347
+Running Memetic Algorithm for 786.5694334506989 seconds...
+Gen 1 | Time: 13.2s
+Best: 5197.629246693736 | Viable: 1/100
+Gen 2 | Time: 93.2s
+Best: 5136.43867708602 | Viable: 2/100
+Gen 3 | Time: 170.4s
+Best: 5115.185856693195 | Viable: 3/100
+Gen 4 | Time: 247.7s
+Best: 5064.885850078654 | Viable: 5/100
+Gen 5 | Time: 324.9s
+Best: 5058.762268120387 | Viable: 3/100
+Gen 6 | Time: 402.1s
+Best: 5028.12547539765 | Viable: 4/100
+Gen 7 | Time: 479.4s
+Best: 4994.957551092473 | Viable: 6/100
+Gen 8 | Time: 556.5s
+Best: 4970.386790905359 | Viable: 5/100
+Gen 9 | Time: 633.7s
+Best: 4943.695277627909 | Viable: 5/100
+Gen 10 | Time: 710.8s
+Best: 4943.695277627909 | Viable: 7/100
+
+Optimization completed.
+Saving the solution to the output file...
+Done!
+

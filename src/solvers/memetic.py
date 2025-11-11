@@ -14,19 +14,23 @@ class MemeticAlgorithm:
         self,
         file_name: str,
         problem: Problem,
+        gb_solution: np.ndarray,
         pop_size: int,
         crossover_rate: float = 0.75,
         mutation_rate: float = 0.15,
         time_limit: int = 60 * 5,
+        remaining_time: int = 60 * 5,
         tol: float = 1e-6,
     ):
         self.file_name = file_name
         self.problem = problem
+        self.gb_solution = gb_solution
         self.pop_size = pop_size
         self.fitness = POSITIVE_INFINITY * np.ones(pop_size)
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
         self.time_limit = time_limit
+        self.remaining_time = remaining_time
         self.tol = tol
         self.optimization = Optimization(problem)
         self.pop = None
@@ -56,16 +60,17 @@ class MemeticAlgorithm:
         return np.array(pop)
 
     def _repair_individual(self, individual) -> np.ndarray:
-        for i in range(len(individual)):
-            intervention = self.problem.interventions[i]
+        if not self.optimization.constraints_satisfied(individual)[0]:
+            for i in range(len(individual)):
+                intervention = self.problem.interventions[i]
 
-            if individual[i] < 1 or individual[i] > intervention.tmax:
-                individual[i] = np.random.randint(1, intervention.tmax + 1)
+                if individual[i] < 1 or individual[i] > intervention.tmax:
+                    individual[i] = np.random.randint(1, intervention.tmax + 1)
 
-            delta = intervention.delta[individual[i] - 1]
-            if individual[i] + delta > self.problem.time_horizon.time_steps:
-                max_start = max(1, self.problem.time_horizon.time_steps - delta)
-                individual[i] = min(max_start, intervention.tmax)
+                delta = intervention.delta[individual[i] - 1]
+                if individual[i] + delta > self.problem.time_horizon.time_steps:
+                    max_start = max(1, self.problem.time_horizon.time_steps - delta)
+                    individual[i] = min(max_start, intervention.tmax)
 
         return individual
 
@@ -254,7 +259,9 @@ class MemeticAlgorithm:
         start_time = time.time()
         generation = 0
 
-        self.pop = self._init_population(self.pop_size)
+        self.pop = self._init_population(self.pop_size - 1)
+        self.pop = np.vstack((self.pop, self.gb_solution))
+
         for i in range(self.pop_size):
             self.pop[i] = self._repair_individual(self.pop[i])
 
@@ -263,7 +270,7 @@ class MemeticAlgorithm:
         best_fitness_history = []
         no_improvement_count = 0
 
-        while time.time() - start_time < self.time_limit:
+        while time.time() - start_time < self.remaining_time:
             generation += 1
             elapsed = time.time() - start_time
 

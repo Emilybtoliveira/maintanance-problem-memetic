@@ -1,21 +1,21 @@
 import json
 import os
 import sys
-from pathlib import Path
 import time
 import concurrent.futures
+
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from datamodels.problem import Problem
-
 from datamodels.input_problem_loader import InputProblemLoader
-
 from utils.log import log
 from solvers.memetic import MemeticAlgorithm
+from solvers.gurobi import Gurobi
 
 
-TIME_LIMIT = 60 * 10  # 15 minutes
+TIME_LIMIT = 60 * 15  # 15 minutes
 
 
 def load_problem(current_dir, instance) -> Problem:
@@ -64,13 +64,28 @@ def make_optimization(
     start_time_execution = time.time()
     log(f"{instance}", "Optimizing the problem...")
 
+    gb = Gurobi(problem=problem, time_limit=300)
+
+    gb_solution = gb.optimize()
+
+    # Save the Gurobi result in log file
+    log(f"{instance}", f"Gurobi solution: {gb.get_objective_value()}")
+
+    remaining_time = TIME_LIMIT - (time.time() - start_time_execution)
+
+    # print(f"Gurobi solution: {gb_solution}")
+
+    log(f"{instance}", f"Running Memetic Algorithm for {remaining_time} seconds...")
+
     solution, objective_value = MemeticAlgorithm(
         file_name=instance,
         problem=problem,
+        gb_solution=gb_solution,
         pop_size=pop_size,
         crossover_rate=crossover_rate,
         mutation_rate=mutation_rate,
         time_limit=TIME_LIMIT,
+        remaining_time=remaining_time,
     ).optimize()
 
     log(f"{instance}", "\nOptimization completed.")
@@ -182,7 +197,7 @@ def main() -> None:
             crossover_rate = float(sys.argv[3])
             mutation_rate = float(sys.argv[4])
         else:
-            instance = "A_03"  # The default instance because it is the smallest and runs faster
+            instance = "B_06"  # The default instance because it is the smallest and runs faster
             pop_size = algorithm_parameters["pop_size"]
             crossover_rate = algorithm_parameters["crossover_rate"]
             mutation_rate = algorithm_parameters["mutation_rate"]
@@ -190,14 +205,29 @@ def main() -> None:
         problem = load_problem(current_dir, instance)
 
         # ------------- Make the Optimization ----------------
+        start_time_execution = time.time()
+
+        gb = Gurobi(problem=problem, time_limit=300)
+
+        gb_solution = gb.optimize()
+
+        remaining_time = TIME_LIMIT - (time.time() - start_time_execution)
+
+        # print(f"Gurobi solution: {gb_solution}")
+
+        # breakpoint()
+
+        print(f"Running Memetic Algorithm for {remaining_time} seconds...")
 
         solution, objective_value = MemeticAlgorithm(
             file_name=instance,
             problem=problem,
+            gb_solution=gb_solution,
             pop_size=pop_size,
             crossover_rate=crossover_rate,
             mutation_rate=mutation_rate,
             time_limit=TIME_LIMIT,
+            remaining_time=remaining_time,
         ).optimize()
 
         print(f"{instance}: {solution}, {objective_value}")
