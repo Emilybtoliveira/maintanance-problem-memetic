@@ -3,6 +3,9 @@ import os
 import sys
 import time
 import concurrent.futures
+import subprocess
+import numpy as np
+import matplotlib.pyplot as plt
 
 from pathlib import Path
 
@@ -41,13 +44,16 @@ def load_problem(current_dir, instance) -> Problem:
 
     return problem
 
-
 def make_optimization(
     instance,
     problem,
     pop_size,
     crossover_rate,
     mutation_rate,
+    time_limit=TIME_LIMIT,
+    target = 0,
+    use_gurobi = True,
+    use_full_repair = False
 ) -> tuple:
     """
     Perform optimization on the given problem instance using specified parameters.
@@ -63,15 +69,19 @@ def make_optimization(
     """
     start_time_execution = time.time()
     log(f"{instance}", "Optimizing the problem...")
+    
+    gb_solution = []
+    
+    if use_gurobi:
+        gb = Gurobi(problem=problem, time_limit=300)
 
-    gb = Gurobi(problem=problem, time_limit=300)
+        gb_solution = gb.optimize()
 
-    gb_solution = gb.optimize()
+        # Save the Gurobi result in log file
+        log(f"{instance}", f"Gurobi solution: {gb.get_objective_value()}")
+    
 
-    # Save the Gurobi result in log file
-    log(f"{instance}", f"Gurobi solution: {gb.get_objective_value()}")
-
-    remaining_time = TIME_LIMIT - (time.time() - start_time_execution)
+    remaining_time = time_limit - (time.time() - start_time_execution)
 
     # print(f"Gurobi solution: {gb_solution}")
 
@@ -84,12 +94,16 @@ def make_optimization(
         pop_size=pop_size,
         crossover_rate=crossover_rate,
         mutation_rate=mutation_rate,
-        time_limit=TIME_LIMIT,
+        time_limit=time_limit,
         remaining_time=remaining_time,
+        target=target,
+        use_full_repair=use_full_repair
     ).optimize()
 
     log(f"{instance}", "\nOptimization completed.")
     log(f"{instance}", "Saving the solution to the output file...")
+
+    total_time_execution =  time.time() - start_time_execution
 
     output_dir = Path(__file__).resolve().parent.parent / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -99,7 +113,152 @@ def make_optimization(
 
     log(f"{instance}", "Done!\n")
 
-    return solution, objective_value
+    return solution, objective_value, total_time_execution
+
+def run_vasquez_solver(instance, time_limit, target = 0):
+    instance_full_path = os.path.dirname(os.path.abspath(__file__)) + "/../input/" + instance + ".json"
+    print(instance_full_path)
+    cmd = ["/home/emily/Documentos/UNICAMP/topicos comb opt/rc/challengeRTE", "-p", instance_full_path, "-t", str(time_limit), "-target", str(target)]
+    start = time.time()
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    end = time.time()
+
+    print(result)
+    elapsed = end - start
+    return elapsed, result.stdout
+
+def generate_perfomance_profile(pop_size, crossover_rate, mutation_rate):    
+    times = {"Vasquez": [],
+              "Memetic": []}
+
+    N_RUNS = 1
+    INSTANCES = {  # instance : target
+        "A_02": 5000,
+        "A_03": 850,
+        # "A_07": 2272,
+        # "A_08": 745,
+        # "A_09": 1508,
+    }
+    time_limit = 1800
+
+    for inst, target in INSTANCES.items():
+        print(f"==> Rodando instância {inst}")
+        vasquez_tt = np.mean([run_vasquez_solver(inst, time_limit, target)[0] for _ in range(N_RUNS)])
+        times["Vasquez"].append(vasquez_tt)
+        
+        problem = load_problem(os.path.dirname(os.path.abspath(__file__)), inst)
+        mem_t = np.mean([make_optimization(inst, problem, pop_size, crossover_rate, mutation_rate, time_limit, target)[2] for _ in range(N_RUNS)])
+        times["Memetic"].append(mem_t)        
+
+    T = np.vstack([times["Vasquez"], times["Memetic"]]).T
+
+    min_times = np.min(T, axis=1)
+    ratios = T / min_times[:, None]
+
+    taus = np.linspace(1, np.max(ratios) + 0.5, 100)
+    plt.figure(figsize=(6, 4))
+
+    for j, algo in enumerate(times.keys()):
+        rho = [np.mean(ratios[:, j] <= tau) for tau in taus]
+        plt.plot(taus, rho, label=algo)
+
+    plt.xlabel(r"$\tau$")
+    plt.ylabel(r"$\rho_s(\tau)$")
+    plt.title("Performance Profile")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("output/performance_profile.png", dpi=300)
+    plt.show()
+
+def generate_ttt_plot(pop_size, crossover_rate, mutation_rate):    
+    N_RUNS = 2
+    INSTANCES = {  # instance : target
+        "A_02": 4680,
+        "A_03": 850,
+        "A_07": 2272,
+        "A_08": 745,
+        "A_09": 1508,
+    }
+    time_limit = 1800
+
+    all_vasquez_times = {}
+    all_memetic_times = {}
+
+    for inst, target in INSTANCES.items():
+        vasquez_times = []
+        memetic_times = []
+
+        print(f"==> Rodando instância {inst}")
+
+        for i in range(N_RUNS):
+            t_vasquez, _ = run_vasquez_solver(inst, time_limit, target)
+            vasquez_times.append(t_vasquez)
+
+            problem = load_problem(os.path.dirname(os.path.abspath(__file__)), inst)
+            t_mem = make_optimization(
+                inst, problem, pop_size, crossover_rate, mutation_rate,
+                time_limit, target
+            )[2]
+            memetic_times.append(t_mem)
+
+        all_vasquez_times[inst] = vasquez_times
+        all_memetic_times[inst] = memetic_times
+
+        cpp_sorted = np.sort(vasquez_times)
+        mem_sorted = np.sort(memetic_times)
+        p = np.linspace(0, 1, len(cpp_sorted))
+
+        plt.figure(figsize=(7, 5))
+        plt.plot(cpp_sorted, p, label="Vasquez (C++)", linestyle="--")
+        plt.plot(mem_sorted, p, label="Memetic (Python)", linestyle="-")
+
+        plt.xlabel("Tempo (s)")
+        plt.ylabel("Proporção de execuções")
+        plt.title(f"TTT-Plot — Instância {inst} (target {target})")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+
+        os.makedirs("output", exist_ok=True)
+        plt.savefig(f"output/ttt_plot_{inst}.png", dpi=300)
+        plt.close()
+
+    print("TTT-plots gerados para todas as instâncias!")
+
+def generate_gurobi_comparison(pop_size, crossover_rate, mutation_rate):
+    INSTANCES = ["A_07, A_08", "A_09", "A_11", "A_12"]
+    time_limit = 300
+
+    with open("output/gurobi_comparison.csv", "w") as f:
+        f.write("Instance, Gurobi Obj, Gurobi Time, Memetic Obj, Memetic Time\n")
+        for instance in INSTANCES:
+            problem = load_problem(os.path.dirname(os.path.abspath(__file__)), instance)
+
+            # Usando Gurobi como solução inicial
+            _, gurobi_obj, gurobi_time = make_optimization(instance, problem, pop_size, crossover_rate, mutation_rate, time_limit, 0, True)
+
+            # Não usando Gurobi como solução inicial
+            _, meme_obj, meme_time = make_optimization(instance, problem, pop_size, crossover_rate, mutation_rate, time_limit, 0, False)
+            
+            f.write(f"{instance}, {gurobi_obj}, {gurobi_time}, {meme_obj}, {meme_time}\n")
+
+def generate_repair_sol_comparison(pop_size, crossover_rate, mutation_rate):
+    INSTANCES = ["A_07, A_08", "A_09", "A_11", "A_12"]
+    time_limit = 300
+
+    with open("output/repair_sol_comparison.csv", "w") as f:
+        f.write("Instance, Full Repair Obj, Full Repair Time, Simple Repair Obj, Simple Repair  Time\n")
+        for instance in INSTANCES:
+            problem = load_problem(os.path.dirname(os.path.abspath(__file__)), instance)
+
+            # Memético com o reparo de todas as restrições violadas
+            _, full_repair_obj, full_repair_time = make_optimization(instance, problem, pop_size, crossover_rate, mutation_rate, time_limit, 0, False, True)
+
+            # Memético com o reparo apenas dos tempos de início
+            _, simple_repair_obj, simple_repair_time = make_optimization(instance, problem, pop_size, crossover_rate, mutation_rate, time_limit, 0, False, False)
+            
+            f.write(f"{instance}, {full_repair_obj}, {full_repair_time}, {simple_repair_obj}, {simple_repair_time}\n")
 
 
 def run_all_instances(instances, algorithm_parameters) -> None:
@@ -202,35 +361,38 @@ def main() -> None:
             crossover_rate = algorithm_parameters["crossover_rate"]
             mutation_rate = algorithm_parameters["mutation_rate"]
 
-        problem = load_problem(current_dir, instance)
+        # problem = load_problem(current_dir, instance)
 
-        # ------------- Make the Optimization ----------------
-        start_time_execution = time.time()
+        # # ------------- Make the Optimization ----------------
+        # start_time_execution = time.time()
 
-        gb = Gurobi(problem=problem, time_limit=300)
+        # gb = Gurobi(problem=problem, time_limit=300)
 
-        gb_solution = gb.optimize()
+        # gb_solution = gb.optimize()
 
-        remaining_time = TIME_LIMIT - (time.time() - start_time_execution)
+        # remaining_time = TIME_LIMIT - (time.time() - start_time_execution)
 
-        # print(f"Gurobi solution: {gb_solution}")
+        # # print(f"Gurobi solution: {gb_solution}")
 
-        # breakpoint()
+        # # breakpoint()
 
-        print(f"Running Memetic Algorithm for {remaining_time} seconds...")
+        # print(f"Running Memetic Algorithm for {remaining_time} seconds...")
 
-        solution, objective_value = MemeticAlgorithm(
-            file_name=instance,
-            problem=problem,
-            gb_solution=gb_solution,
-            pop_size=pop_size,
-            crossover_rate=crossover_rate,
-            mutation_rate=mutation_rate,
-            time_limit=TIME_LIMIT,
-            remaining_time=remaining_time,
-        ).optimize()
+        # solution, objective_value = MemeticAlgorithm(
+        #     file_name=instance,
+        #     problem=problem,
+        #     gb_solution=gb_solution,
+        #     pop_size=pop_size,
+        #     crossover_rate=crossover_rate,
+        #     mutation_rate=mutation_rate,
+        #     time_limit=TIME_LIMIT,
+        #     remaining_time=remaining_time,
+        # ).optimize()
 
-        print(f"{instance}: {solution}, {objective_value}")
+        # print(f"{instance}: {solution}, {objective_value}")
+
+        # generate_ttt_plot(pop_size, crossover_rate, mutation_rate)
+        generate_perfomance_profile(pop_size, crossover_rate, mutation_rate)
 
 
 if __name__ == "__main__":

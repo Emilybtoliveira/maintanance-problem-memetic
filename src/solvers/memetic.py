@@ -21,6 +21,8 @@ class MemeticAlgorithm:
         time_limit: int = 60 * 5,
         remaining_time: int = 60 * 5,
         tol: float = 1e-6,
+        target: int = 0,
+        use_full_repair: bool = False
     ):
         self.file_name = file_name
         self.problem = problem
@@ -34,6 +36,9 @@ class MemeticAlgorithm:
         self.tol = tol
         self.optimization = Optimization(problem)
         self.pop = None
+        self.target = target
+        self.use_full_repair = use_full_repair
+
     # ==========================
     # Memetic Algorithm Functions
     # ==========================
@@ -388,8 +393,11 @@ class MemeticAlgorithm:
             if np.random.rand() < self.mutation_rate:
                 child = self._mutate(child)
 
-            child = self._repair_individual(child)
-            new_pop.append(child)
+            if self.use_full_repair:
+                child = self._repair_population(np.array(child))[0]
+            else:   
+                child = self._repair_individual(child)
+                new_pop.append(child)
 
         new_pop = np.array(new_pop)
         fitness_new = np.array([self._evaluate_individual(ind) for ind in new_pop])
@@ -432,10 +440,14 @@ class MemeticAlgorithm:
         generation = 0
 
         self.pop = self._init_population(self.pop_size - 1)
-        self.pop = np.vstack((self.pop, self.gb_solution))
+        if len(self.gb_solution) > 0:
+            self.pop = np.vstack((self.pop, self.gb_solution))
 
         for i in range(self.pop_size):
-            self.pop[i] = self._repair_individual(self.pop[i])
+            if self.use_full_repair:
+                self.pop[i] = self._repair_population(np.array(self.pop[i]))[0]
+            else:   
+                self.pop[i] = self._repair_individual(self.pop[i])
 
         self.fitness = np.array([self._evaluate_individual(ind) for ind in self.pop])
 
@@ -482,6 +494,10 @@ class MemeticAlgorithm:
             )
 
             print(f"Gen {generation}: {best_fitness} | Viable: {n_viable}")
+
+            if best_fitness <= self.target: 
+                # Termina ao atingir a função objetivo target, se esta for definida
+                break
 
         best_idx = np.argmin(self.fitness)
         best_individual = self.pop[best_idx]
