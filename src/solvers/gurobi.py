@@ -3,11 +3,20 @@ from gurobipy import GRB
 
 
 class Gurobi:
-    def __init__(self, time_limit, problem):
+    def __init__(self, time_limit, problem, threads=1):
         self.time_limit = time_limit
         self.problem = problem
+        self.threads = threads
         self.model = gp.Model()
-        self.model.setParam("TimeLimit", time_limit)
+
+        self.model.setParam("TimeLimit", self.time_limit)
+        self.model.setParam("Threads", self.threads)
+        # self.model.setParam("OutputFlag", 0)  # Suppress output
+
+        self.model.Params.MIPFocus = 1  # 1=feasibility, 2=optimality, 3=bound
+        self.model.Params.PoolSearchMode = 2  # 2=extensive search for diverse solutions
+        self.model.Params.PoolSolutions = 30  # Keep up to 30 solutions
+        self.model.Params.PoolGap = 1.0  # Accept solutions within 100% of best
 
     def optimize(self):
         self._create_variables()
@@ -18,7 +27,7 @@ class Gurobi:
 
         self.model.optimize()
 
-        return self.get_solution()
+        return self.get_pool_solutions()
 
     def _create_variables(self):
         self.x = {
@@ -52,6 +61,9 @@ class Gurobi:
             expr,
             GRB.MINIMIZE,
         )
+
+        # Zero objective function to focus on feasibility
+        # self.model.setObjective(0, GRB.MINIMIZE)
 
     def _intervention_constraint(self):
         for i in range(len(self.problem.interventions)):
@@ -116,6 +128,29 @@ class Gurobi:
 
     def get_objective_value(self):
         return self.model.objVal
+
+    def get_pool_solutions(self):
+        pool_solutions = []
+        n_solutions = self.model.SolCount
+
+        for s in range(n_solutions):
+            self.model.Params.SolutionNumber = s
+
+            gurobi_solution = []
+
+            for i in range(len(self.problem.interventions)):
+                start_time = None
+                for t in range(1, self.problem.time_horizon.time_steps + 1):
+                    if self.x[i][t].Xn > 0.5:
+                        start_time = t
+                        break
+                if start_time is None:
+                    start_time = 0
+                gurobi_solution.append(start_time)
+
+            pool_solutions.append(gurobi_solution)
+
+        return pool_solutions
 
     def get_solution(self):
         gurobi_solution = []

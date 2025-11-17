@@ -95,7 +95,7 @@ class Optimization:
         self.time_steps = T
         self.scenarios_array = np.array(self.problem.scenarios)
 
-    def objective_function(self, start_times, penalty=0) -> tuple[float, float, float]:
+    def _objective_function(self, start_times, penalty=0) -> float:
         """
         Optimized objective function interface
         """
@@ -110,52 +110,63 @@ class Optimization:
             penalty,
         )
 
-    def constraints_satisfied(self, start_times) -> tuple[bool, float]:
-        penalty = 0.0
-
-        satisfied, pen = self.intervention_constraint_satisfied(start_times)
-        if not satisfied:
-            penalty += pen * 1e6
-
-        satisfied, pen = self.intervention_constraint_satisfied(start_times)
-        if not satisfied:
-            penalty += pen * 1e6
-
-        satisfied, pen, _, _ = self.resources_constraint_satisfied(start_times)
-        if not satisfied:
-            penalty += pen * 1e6
-
-        return penalty == 0, penalty
-    
-    def intervention_constraint_satisfied(self, start_times: np.ndarray) -> tuple[bool, float]:
-        violated, penalty = _numba_intervention_constraint(
-            start_times, self.deltas, self.tmax_values, self.time_steps
+    def _intervention_constraint_satisfied(self, start_times) -> tuple[bool, float]:
+        return _numba_intervention_constraint(
+            np.array(start_times), self.deltas, self.tmax_values, self.time_steps
         )
-        return not violated, penalty
-    
 
-    def resources_constraint_satisfied(self, start_times: np.ndarray) -> tuple[bool, float, dict, dict]:
-        violated, penalty, underused_resources, overused_resources = _numba_resources_constraint(
-            start_times,
+    def _resources_constraint_satisfied(self, start_times) -> tuple[bool, float]:
+        return _numba_resources_constraint(
+            np.array(start_times),
             self.resource_workload,
             self.resource_mins,
             self.resource_maxs,
             self.deltas,
             self.time_steps,
         )
-        return not violated, penalty, underused_resources, overused_resources
-    
-    def exclusion_constraint_satisfied(self, start_times: np.ndarray) -> tuple[bool, float]:
-        violated, penalty = _numba_exclusion_constraint(
-            start_times, self.deltas, self.exclusion_pairs, self.exclusion_seasons
+
+    def _exclusion_constraint_satisfied(self, start_times) -> tuple[bool, float]:
+        return _numba_exclusion_constraint(
+            np.array(start_times),
+            self.deltas,
+            self.exclusion_pairs,
+            self.exclusion_seasons,
         )
-        return not violated, penalty
+
+    def _constraints_satisfied(self, start_times) -> tuple[bool, float]:
+        start_times_array = np.array(start_times, dtype=np.int32)
+        penalty = 0.0
+
+        violated, pen = _numba_intervention_constraint(
+            start_times_array, self.deltas, self.tmax_values, self.time_steps
+        )
+        if violated:
+            penalty += pen * 1e6
+
+        violated, pen = _numba_resources_constraint(
+            start_times_array,
+            self.resource_workload,
+            self.resource_mins,
+            self.resource_maxs,
+            self.deltas,
+            self.time_steps,
+        )
+        if violated:
+            penalty += pen * 1e6
+
+        violated, pen = _numba_exclusion_constraint(
+            start_times_array, self.deltas, self.exclusion_pairs, self.exclusion_seasons
+        )
+        if violated:
+            penalty += pen * 1e6
+
+        return penalty == 0, penalty
 
 
 @njit(fastmath=True)
 def _numba_objective_function(
     start_times, risk_array, deltas, T, quantile, alpha, scenarios, penalty
-) -> tuple[float, float, float]:
+):
     mean_risk = 0.0
     expected_excess = 0.0
 
@@ -208,39 +219,28 @@ def _numba_intervention_constraint(start_times, deltas, tmax_values, time_horizo
     return penalty > 0, penalty
 
 
+@njit
 def _numba_resources_constraint(
     start_times, resource_workload, resource_mins, resource_maxs, deltas, T
 ):
     eps = 1e-6
     penalty = 0.0
-    underused_resources = {
-        t: set() for t in range(1, T + 1)
-    }
-    overused_resources = {
-        t: set() for t in range(1, T + 1)
-    }
 
     for t in range(1, T + 1):
         for r in range(len(resource_mins)):
             total_resource_usage = 0.0
-            
-            interventions_in_t = set()
 
             for i in range(len(start_times)):
                 start_time = int(start_times[i])
                 if start_time <= t <= start_time + deltas[i, start_time - 1] - 1:
-                    interventions_in_t.add(i)
                     total_resource_usage += resource_workload[r, i, t, start_time]
 
             if total_resource_usage < resource_mins[r, t - 1] - eps:
                 penalty += resource_mins[r, t - 1] - total_resource_usage
-                underused_resources[t].update(interventions_in_t)
             elif total_resource_usage > resource_maxs[r, t - 1] + eps:
                 penalty += total_resource_usage - resource_maxs[r, t - 1]
-                overused_resources[t].update(interventions_in_t)
 
-
-    return penalty > 0, penalty, underused_resources, overused_resources
+    return penalty > 0, penalty
 
 
 @njit

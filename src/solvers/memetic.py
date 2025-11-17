@@ -4,6 +4,7 @@ import numpy as np
 
 from datamodels.problem import Problem
 from solvers.optimization import Optimization
+from utils.format_solution import format_solution
 from utils.log import log
 
 POSITIVE_INFINITY = float("inf")
@@ -14,26 +15,26 @@ class MemeticAlgorithm:
         self,
         file_name: str,
         problem: Problem,
-        gb_solution: np.ndarray,
+        gb_pool_solutions: np.ndarray,
         pop_size: int,
         crossover_rate: float = 0.75,
         mutation_rate: float = 0.15,
-        time_limit: int = 60 * 5,
-        remaining_time: int = 60 * 5,
+        remaining_time: int = 60 * 15,
+        target: float = None,
         tol: float = 1e-6,
     ):
         self.file_name = file_name
         self.problem = problem
-        self.gb_solution = gb_solution
+        self.gb_pool_solutions = gb_pool_solutions
         self.pop_size = pop_size
         self.fitness = POSITIVE_INFINITY * np.ones(pop_size)
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
-        self.time_limit = time_limit
         self.remaining_time = remaining_time
         self.tol = tol
         self.optimization = Optimization(problem)
         self.pop = None
+        self.target = target
 
     def _init_population(self, pop_size) -> np.ndarray:
         pop = []
@@ -60,7 +61,7 @@ class MemeticAlgorithm:
         return np.array(pop)
 
     def _repair_individual(self, individual) -> np.ndarray:
-        if not self.optimization.constraints_satisfied(individual)[0]:
+        if not self.optimization._constraints_satisfied(individual)[0]:
             for i in range(len(individual)):
                 intervention = self.problem.interventions[i]
 
@@ -116,8 +117,8 @@ class MemeticAlgorithm:
         return individual
 
     def _evaluate_individual(self, individual) -> float:
-        _, penalty = self.optimization.constraints_satisfied(individual)
-        fitness, _, _ = self.optimization.objective_function(individual, penalty)
+        _, penalty = self.optimization._constraints_satisfied(individual)
+        fitness, _, _ = self.optimization._objective_function(individual, penalty)
         return fitness
 
     def _shift_move(self, individual, intervention_idx, new_time):
@@ -131,12 +132,12 @@ class MemeticAlgorithm:
         return candidate
 
     def _is_feasible_move(self, candidate):
-        interv_ok = self.optimization.intervention_constraint_satisfied(candidate)[0]
-        excl_ok = self.optimization.exclusion_constraint_satisfied(candidate)[0]
+        interv_ok = self.optimization._intervention_constraint_satisfied(candidate)[0]
+        excl_ok = self.optimization._exclusion_constraint_satisfied(candidate)[0]
         return interv_ok and excl_ok
 
     def _local_search(
-        self, individual, max_time=3, max_non_improving=100
+        self, individual, max_time=5, max_non_improving=100
     ) -> np.ndarray:
         best = individual.copy()
         best_fitness = self._evaluate_individual(best)
@@ -259,8 +260,21 @@ class MemeticAlgorithm:
         start_time = time.time()
         generation = 0
 
-        self.pop = self._init_population(self.pop_size - 1)
-        self.pop = np.vstack((self.pop, self.gb_solution))
+        # print(f"n interventions: {len(self.problem.interventions)}")
+
+        # for i, sol in enumerate(self.gb_pool_solutions):
+        #     print(f"Solution {i}: len={len(sol)}")
+
+        # breakpoint()
+
+        # self.pop = self._init_population(self.pop_size - 1)
+        self.pop = np.array(self.gb_pool_solutions)
+        if len(self.pop) < self.pop_size:
+            additional_pop = self._init_population(self.pop_size - len(self.pop))
+            self.pop = np.vstack((self.pop, additional_pop))
+
+        # print(f"Initial population size: {len(self.pop)}")
+        # print(f"Shape: {self.pop.shape}")
 
         for i in range(self.pop_size):
             self.pop[i] = self._repair_individual(self.pop[i])
@@ -302,7 +316,7 @@ class MemeticAlgorithm:
                 no_improvement_count = 0
 
             n_viable = np.sum(
-                [self.optimization.constraints_satisfied(ind)[0] for ind in self.pop]
+                [self.optimization._constraints_satisfied(ind)[0] for ind in self.pop]
             )
             log(
                 self.file_name,
@@ -311,9 +325,20 @@ class MemeticAlgorithm:
 
             print(f"Gen {generation}: {best_fitness} | Viable: {n_viable}")
 
+            if self.target is not None and best_fitness <= self.target + 1:
+                # log(
+                #     self.file_name,
+                #     f"Target fitness {self.target} reached. Stopping optimization.",
+                # )
+                break
+
         best_idx = np.argmin(self.fitness)
         best_individual = self.pop[best_idx]
 
-        print(self.optimization.constraints_satisfied(best_individual))
+        log(self.file_name, f"Best solution fitness: {self.fitness[best_idx]}")
 
-        return best_individual, self.fitness[best_idx]
+        print(self.optimization._constraints_satisfied(best_individual))
+
+        solution_formated = format_solution(self.problem.interventions, best_individual)
+
+        return best_individual, self.fitness[best_idx], solution_formated
