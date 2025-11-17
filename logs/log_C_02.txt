@@ -1,30 +1,43 @@
-Starting at 2025-11-11 13:22:44
+Starting at 2025-11-14 14:13:32
 Loading the problem...
 Problem loaded successfully!
-Elapsed time: 3.00 seconds
+Elapsed time: 4.15 seconds
 Optimizing the problem...
 Gurobi solution: 4395.744468159696
-Running Memetic Algorithm for 787.7236342430115 seconds...
-Gen 1 | Time: 13.4s
-Best: 3661.250945505106 | Viable: 1/100
-Gen 2 | Time: 93.7s
-Best: 3661.250945505106 | Viable: 1/100
-Gen 3 | Time: 173.9s
-Best: 3659.5735874535903 | Viable: 3/100
-Gen 4 | Time: 254.4s
-Best: 3659.5735874535903 | Viable: 3/100
-Gen 5 | Time: 334.7s
-Best: 3659.13679418024 | Viable: 3/100
-Gen 6 | Time: 415.0s
-Best: 3659.13679418024 | Viable: 1/100
-Gen 7 | Time: 495.3s
-Best: 3658.370755465525 | Viable: 4/100
-Gen 8 | Time: 575.2s
-Best: 3657.3698139550547 | Viable: 5/100
-Gen 9 | Time: 655.2s
-Best: 3654.4386804328774 | Viable: 10/100
-Gen 10 | Time: 735.2s
-Best: 3653.8160388874553 | Viable: 9/100
+Running Memetic Algorithm for 778 seconds...
+Gen 1 | Time: 0.1s
+Best: 3661.250945505106 | Viable: 39/50
+Gen 2 | Time: 50.2s
+Best: 3661.250945505106 | Viable: 44/50
+Gen 3 | Time: 100.3s
+Best: 3661.250945505106 | Viable: 50/50
+Gen 4 | Time: 150.4s
+Best: 3661.250945505106 | Viable: 43/50
+Gen 5 | Time: 200.6s
+Best: 3661.250945505106 | Viable: 46/50
+Gen 6 | Time: 250.7s
+Best: 3661.250945505106 | Viable: 48/50
+Gen 7 | Time: 300.8s
+Best: 3661.250945505106 | Viable: 44/50
+Gen 8 | Time: 350.9s
+Best: 3661.250945505106 | Viable: 46/50
+Gen 9 | Time: 401.0s
+Best: 3661.250945505106 | Viable: 46/50
+Gen 10 | Time: 451.1s
+Best: 3661.250945505106 | Viable: 49/50
+Gen 11 | Time: 501.2s
+Best: 3661.250945505106 | Viable: 44/50
+Gen 12 | Time: 551.4s
+Best: 3661.250945505106 | Viable: 48/50
+Gen 13 | Time: 601.5s
+Best: 3661.250945505106 | Viable: 46/50
+Gen 14 | Time: 651.6s
+Best: 3661.250945505106 | Viable: 46/50
+Gen 15 | Time: 701.7s
+Best: 3661.250945505106 | Viable: 47/50
+Gen 16 | Time: 751.8s
+Best: 3661.250945505106 | Viable: 48/50
+Best solution fitness: 3661.250945505106
 
 Optimization completed.
 Saving the solution to the output file...

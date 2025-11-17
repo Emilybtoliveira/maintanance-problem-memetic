@@ -1,32 +1,45 @@
-Starting at 2025-11-11 13:22:22
+Starting at 2025-11-14 13:37:40
 Loading the problem...
 Problem loaded successfully!
-Elapsed time: 3.32 seconds
+Elapsed time: 3.25 seconds
 Optimizing the problem...
 Gurobi solution: 3909.896502054855
-Running Memetic Algorithm for 815.7923560142517 seconds...
-Gen 1 | Time: 13.7s
-Best: 9340.665483156841 | Viable: 96/100
-Gen 2 | Time: 89.6s
-Best: 9147.548810141425 | Viable: 96/100
-Gen 3 | Time: 165.3s
-Best: 8960.130946341018 | Viable: 94/100
-Gen 4 | Time: 241.2s
-Best: 8796.290469987052 | Viable: 92/100
-Gen 5 | Time: 317.2s
-Best: 8695.076188950312 | Viable: 96/100
-Gen 6 | Time: 393.2s
-Best: 8554.72974061966 | Viable: 96/100
-Gen 7 | Time: 469.4s
-Best: 8463.486906006221 | Viable: 92/100
-Gen 8 | Time: 545.8s
-Best: 8374.554765882946 | Viable: 94/100
-Gen 9 | Time: 622.4s
-Best: 8288.815475282216 | Viable: 93/100
-Gen 10 | Time: 698.9s
-Best: 8242.655946004958 | Viable: 94/100
-Gen 11 | Time: 775.4s
-Best: 8192.433340435935 | Viable: 92/100
+Running Memetic Algorithm for 849 seconds...
+Gen 1 | Time: 0.1s
+Best: 10847.322613852362 | Viable: 43/50
+Gen 2 | Time: 50.2s
+Best: 10605.023801394873 | Viable: 43/50
+Gen 3 | Time: 100.3s
+Best: 10225.602380752563 | Viable: 42/50
+Gen 4 | Time: 150.4s
+Best: 10225.602380752563 | Viable: 34/50
+Gen 5 | Time: 200.5s
+Best: 10225.602380752563 | Viable: 33/50
+Gen 6 | Time: 250.6s
+Best: 10200.461903799149 | Viable: 39/50
+Gen 7 | Time: 300.7s
+Best: 10196.885716983248 | Viable: 43/50
+Gen 8 | Time: 350.8s
+Best: 10164.404777254378 | Viable: 49/50
+Gen 9 | Time: 400.9s
+Best: 10163.07737473079 | Viable: 47/50
+Gen 10 | Time: 451.0s
+Best: 10143.733306839353 | Viable: 45/50
+Gen 11 | Time: 501.2s
+Best: 10108.517860003878 | Viable: 44/50
+Gen 12 | Time: 551.3s
+Best: 10094.083343233382 | Viable: 48/50
+Gen 13 | Time: 601.4s
+Best: 10049.247618993122 | Viable: 46/50
+Gen 14 | Time: 651.5s
+Best: 10022.703574543904 | Viable: 43/50
+Gen 15 | Time: 701.6s
+Best: 10005.142860412598 | Viable: 50/50
+Gen 16 | Time: 751.7s
+Best: 10005.142860412598 | Viable: 45/50
+Gen 17 | Time: 801.8s
+Best: 10005.142860412598 | Viable: 50/50
+Best solution fitness: 10005.142860412598
 
 Optimization completed.
 Saving the solution to the output file...

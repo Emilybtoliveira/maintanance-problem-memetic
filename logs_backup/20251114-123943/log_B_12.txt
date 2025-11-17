@@ -1,0 +1,18 @@
+Starting at 2025-11-14 08:39:02
+Loading the problem...
+Problem loaded successfully!
+Elapsed time: 26.77 seconds
+Optimizing the problem...
+Gurobi solution: 21444.755356445246
+Warning: remaining_time adjusted to 60 seconds
+Running Memetic Algorithm for 60 seconds...
+Gen 1 | Time: 4.2s
+Best: 41840.557338340615 | Viable: 10/50
+Gen 2 | Time: 54.8s
+Best: 41840.557338340615 | Viable: 6/50
+Best solution fitness: 41840.557338340615
+
+Optimization completed.
+Saving the solution to the output file...
+Done!
+

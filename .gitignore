@@ -3,4 +3,6 @@ poetry.lock
 __pycache__/
 *.pyc
 .vscode/
+input/
 output/
+rc/

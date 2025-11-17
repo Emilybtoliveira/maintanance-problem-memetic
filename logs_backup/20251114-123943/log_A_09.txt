@@ -1,0 +1,46 @@
+Starting at 2025-11-14 08:37:50
+Loading the problem...
+Problem loaded successfully!
+Elapsed time: 0.01 seconds
+Optimizing the problem...
+Gurobi solution: 3012.724862745098
+Running Memetic Algorithm for 900 seconds...
+Gen 1 | Time: 3.9s
+Best: 1507.2847856708604 | Viable: 50/50
+Gen 2 | Time: 53.9s
+Best: 1507.2847856708604 | Viable: 43/50
+Gen 3 | Time: 103.9s
+Best: 1507.2847856708604 | Viable: 48/50
+Gen 4 | Time: 153.9s
+Best: 1507.2847856708604 | Viable: 50/50
+Gen 5 | Time: 203.9s
+Best: 1507.2847856708604 | Viable: 46/50
+Gen 6 | Time: 253.9s
+Best: 1507.2847856708604 | Viable: 48/50
+Gen 7 | Time: 304.0s
+Best: 1507.2847856708604 | Viable: 49/50
+Gen 8 | Time: 354.0s
+Best: 1507.2847856708604 | Viable: 49/50
+Gen 9 | Time: 404.0s
+Best: 1507.2847856708604 | Viable: 47/50
+Gen 10 | Time: 454.0s
+Best: 1507.2847856708604 | Viable: 48/50
+Gen 11 | Time: 645.5s
+Best: 1507.2847856708604 | Viable: 48/50
+Gen 12 | Time: 695.6s
+Best: 1507.2847856708604 | Viable: 49/50
+Gen 13 | Time: 745.6s
+Best: 1507.2847856708604 | Viable: 47/50
+Gen 14 | Time: 795.6s
+Reiniciando população por estagnação
+Best: 1507.2847856708604 | Viable: 26/50
+Gen 15 | Time: 845.7s
+Best: 1507.2847856708604 | Viable: 43/50
+Gen 16 | Time: 895.7s
+Best: 1507.2847856708604 | Viable: 48/50
+Best solution fitness: 1507.2847856708604
+
+Optimization completed.
+Saving the solution to the output file...
+Done!
+
